@@ -40,6 +40,10 @@ p.lead{margin:0 0 14px;color:var(--sub);font-size:.9rem}
 .chip:hover{border-color:var(--accent)}
 .chip.on{background:var(--accent);border-color:var(--accent);color:#1a1208;font-weight:700}
 .chip.small{padding:4px 10px;font-size:.76rem}
+.chip.locked{opacity:.5}
+.chip.recommend{border-color:var(--accent);background:rgba(232,135,61,.14)}
+.rec-badge{display:inline-block;margin-left:4px;padding:0 6px;border-radius:999px;background:var(--accent);color:#1a1208;font-size:.66rem;font-weight:700}
+.rec-line{margin:6px 0 8px;padding:8px 10px;border-left:3px solid var(--accent);background:var(--panel2);border-radius:0 8px 8px 0;font-size:.84rem;color:var(--accent2)}
 .limited-note{margin:14px 0 2px;padding:10px 12px;border-left:3px solid var(--accent);background:var(--panel2);border-radius:0 8px 8px 0;color:var(--accent2);font-size:.86rem}
 .genre-more{margin-top:8px}
 .genre-more summary{cursor:pointer;color:var(--sub);font-size:.8rem;padding:5px 0;width:max-content}

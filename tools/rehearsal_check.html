@@ -26,11 +26,11 @@ th{background:#262421;color:#f7c59f;text-align:left}
 (function(){
 'use strict';
 var cases = [
-  {genre:'gh_kit_move',   pattern:'pt_moveplat', action:'a_climb',  scene:'SC_Base_Side',     kit:'Moving Platform', pack:'pk_timeob',  pages:1},
-  {genre:'gh_kit_coll',   pattern:'pt_collect',  action:'a_pounce', scene:'SC_Base_Top',      kit:'Collectible',     pack:'pk_timeob',  pages:1},
-  {genre:'gh_kit_hide',   pattern:'pt_hide',     action:'a_ambush', scene:'SC_Base_Top',      kit:'Hide Object',     pack:'pk_narcount',pages:1},
-  {genre:'gh_kit_switch', pattern:'pt_switch',   action:'a_arrange',scene:'SC_Base_Top',      kit:'Switch',          pack:'pk_timeob',  pages:1},
-  {genre:'gh_kit_escape', pattern:'pt_escape',   action:'a_climb',  scene:'SC_Base_Vertical', kit:'Hazard Area',     pack:'pk_timeob',  pages:1}
+  {genre:'gh_kit_move',   purpose:'p_climb_tower', pattern:'pt_moveplat', action:'a_climb',  scene:'SC_Base_Side',     kit:'Moving Platform', pack:'pk_timeob',  pages:1},
+  {genre:'gh_kit_coll',   purpose:'p_collect_can', pattern:'pt_collect',  action:'a_pounce', scene:'SC_Base_Top',      kit:'Collectible',     pack:'pk_timeob',  pages:1},
+  {genre:'gh_kit_hide',   purpose:'p_hide_dinner', pattern:'pt_hide',     action:'a_ambush', scene:'SC_Base_Top',      kit:'Hide Object',     pack:'pk_narcount',pages:1},
+  {genre:'gh_kit_switch', purpose:'p_pz_fridge', pattern:'pt_switch',   action:'a_arrange',scene:'SC_Base_Top',      kit:'Switch',          pack:'pk_timeob',  pages:1},
+  {genre:'gh_kit_escape', purpose:'p_run_vac', pattern:'pt_escape',   action:'a_climb',  scene:'SC_Base_Vertical', kit:'Hazard Area',     pack:'pk_timeob',  pages:1}
 ];
 var f = document.getElementById('f');
 var sum = document.getElementById('sum');
@@ -63,7 +63,9 @@ async function runCase(c){
   var res = {genre:c.genre, pattern:c.pattern, ok:false, errors:[]};
   try{
     await reset();
-    if(!q('[data-genre="' + c.genre + '"]')){ throw new Error('ジャンルカードがない'); }
+    if(!q('[data-pick="purpose"][data-id="' + c.purpose + '"]')){ throw new Error('目的チップがない: ' + c.purpose); }
+    click('[data-pick="purpose"][data-id="' + c.purpose + '"]');
+    if(!q('[data-genre="' + c.genre + '"]')){ throw new Error('型カードがない'); }
     click('[data-genre="' + c.genre + '"]');
     click('[data-pick="action"][data-id="' + c.action + '"]');
     click('[data-variant="0"]');

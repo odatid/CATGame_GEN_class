@@ -465,7 +465,21 @@ CT.bgmOf = bgmOf;
 CT.LIMITED = {
   mode:'class',
   types:['pt_moveplat','pt_collect','pt_hide','pt_switch','pt_escape'],
-  note:'この日に作れるのは、Unityテンプレートにある5つの仕かけだけです。下のカードから選んでください。'
+  hiddenGroups:['pg_actpuzzle','pg_puzzact','pg_rogue','pg_water'],
+  recommend:{
+    pg_run:     {type:'pt_escape',   why:'迫る危険から逃げ切る形が近いです。'},
+    pg_climb:   {type:'pt_moveplat', why:'足場を渡って上へ進む形が近いです。'},
+    pg_jump:    {type:'pt_moveplat', why:'切れ目や動く足場を渡る形が近いです。'},
+    pg_hide:    {type:'pt_hide',     why:'見つからずに進む形が近いです。'},
+    pg_collect: {type:'pt_collect',  why:'集めてゴールへ届ける形が近いです。'},
+    pg_ambush:  {type:'pt_hide',     why:'待って飛び出す・隠れる形が近いです。'},
+    pg_chaos:   {type:'pt_switch',   why:'物や仕かけを動かす形が近いです。'},
+    pg_care:    {type:'pt_moveplat', why:'飼い主のところへ移動して寄り添う形が近いです。'},
+    pg_battle:  {type:'pt_escape',   why:'危険から距離を取って守る形が近いです。'},
+    pg_puzzle:  {type:'pt_switch',   why:'仕かけを解いて道を開ける形が近いです。'},
+    pg_balance: {type:'pt_moveplat', why:'細い足場を渡る形が近いです。'}
+  },
+  note:'この日に作れるのは、Unityテンプレートにある5つの仕かけだけです。①の目的を選ぶと、あなたたちの猫の動作からおすすめの型を出します。'
 };
 CT.GENRE_HINTS = [
   {id:'gh_kit_move',  label:'うごく床で進む',   desc:'動く床を渡ってゴールへ（Unity: Moving Platform 系・横画面）', set:{purpose:'p_climb_tower', pattern:'pt_moveplat'}},
@@ -510,4 +524,4 @@ CT.inferEMS = function(st){
   ].join('／');
   return {ok: missing.length === 0, missing: missing, sentence: sentence};
 };
-CT.VERSION = {tag:'クラス版 v1.1.0', date:'2026-11-02'};
+CT.VERSION = {tag:'クラス版 v1.1.1', date:'2026-11-02'};

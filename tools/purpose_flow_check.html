@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>狙い画面の順番・おすすめ・非表示の検証</title>
+<style>
+body{font-family:"Zen Kaku Gothic New","Yu Gothic",sans-serif;background:#141414;color:#eee;padding:14px;line-height:1.6}
+h1{font-size:16px;margin:0 0 6px;color:#e8873d}
+#sum{font-size:18px;font-weight:bold;margin:8px 0}
+table{border-collapse:collapse;font-size:.82rem;margin-top:6px}
+th,td{border:1px solid #3a3733;padding:5px 8px;text-align:left;vertical-align:top}
+th{background:#262421;color:#f7c59f}
+.p{color:#7ddb7d;font-weight:bold}.f{color:#ff7d7d;font-weight:bold}
+.small{color:#bdbab2;font-size:.78rem}
+#json{display:none}
+</style>
+</head>
+<body>
+<h1>狙い画面の検証（①目的 → ②型 / おすすめ / 非表示）</h1>
+<p class="small">限定版で、先にグループの総意を選び、その目的からおすすめの型が出ることを実画面で確かめます。</p>
+<div id="sum">RUNNING</div>
+<table id="tbl"><thead><tr><th>検査</th><th>結果</th><th>中身</th></tr></thead><tbody></tbody></table>
+<pre id="json"></pre>
+<iframe id="f" src="../index.html" style="width:1280px;height:900px;border:1px solid #3a3733"></iframe>
+<script>
+(function(){
+'use strict';
+var lines=[], pass=0, fail=0;
+function ok(name, cond, note){
+  if(cond){ pass++; lines.push({ok:true,name:name,note:note||''}); }
+  else { fail++; lines.push({ok:false,name:name,note:note||''}); }
+}
+var f=document.getElementById('f');
+function waitLoad(){
+  return new Promise(function(res){
+    var done=false;
+    function go(){ if(done) return; done=true; f.removeEventListener('load',go); res(); }
+    f.addEventListener('load',go);
+  });
+}
+function doc(){ return f.contentDocument; }
+function q(sel){ return doc().querySelector(sel); }
+function qa(sel){ return Array.prototype.slice.call(doc().querySelectorAll(sel)); }
+function click(sel){
+  var el=q(sel); if(!el){ throw new Error('ボタンが見つからない: '+sel); }
+  el.click();
+}
+function text(sel){ var el=q(sel); return el?el.textContent:''; }
+function eyebrow(){ return text('.eyebrow'); }
+async function reset(){
+  f.contentWindow.localStorage.setItem('catgame.v1', JSON.stringify({step:'purpose'}));
+  var p=waitLoad(); f.contentWindow.location.reload(); await p;
+}
+async function choosePurposeAndType(purpose, type){
+  await reset();
+  click('[data-pick="purpose"][data-id="'+purpose+'"]');
+  click('[data-genre="'+type+'"]');
+}
+async function toWeb(){
+  click('[data-pick="action"][data-id="a_pounce"]');
+  click('[data-variant="0"]');
+  click('[data-go="cons"]');
+  click('[data-packpage]');
+  click('[data-pack="pk_timeob"]');
+  click('[data-go="check"]');
+  if(q('[data-emsok]')){ click('[data-emsok]'); }
+  click('[data-go="plan"]');
+  click('[data-go="out"]');
+  click('[data-tab="web"]');
+  return text('pre.out');
+}
+(async function(){
+  try{
+    await reset();
+
+    /* 1. 非表示グループ */
+    var hidden=['p_ap_drop','p_ap_fill','p_pa_switch','p_pa_dog','p_rl_run','p_rlt_run','p_wat_bath','p_wat_puddle'];
+    var stillThere=hidden.filter(function(id){ return !!q('[data-pick="purpose"][data-id="'+id+'"]'); });
+    ok('指定の4グループが非表示', stillThere.length===0, stillThere.join(',') || '8項目とも非表示');
+    var hiddenLabels=['落ちてくる・積む','仕かけを解きながら進む','なんども挑戦する','水から逃げる'];
+    var labelThere=hiddenLabels.filter(function(l){ return doc().body.textContent.indexOf(l)>=0; });
+    ok('指定グループの見出しも非表示', labelThere.length===0, labelThere.join(',') || '4見出しとも非表示');
+
+    /* 2. 人操作の非表示 */
+    ok('「人を操作」が非表示', !q('[data-subject="sub_human"]') && doc().body.textContent.indexOf('人が操作して')<0,
+       'subject切替なし');
+
+    /* 3. 表示される目的 */
+    var visible=['p_run_out','p_climb_tower','p_jump_bird','p_hide_dinner','p_collect_can','p_amb_mouse','p_chaos_desk','p_care_lap','p_bat_dog','p_pz_fridge','p_bal_wall'];
+    var missing=visible.filter(function(id){ return !q('[data-pick="purpose"][data-id="'+id+'"]'); });
+    ok('残す11グループの目的が見える', missing.length===0, missing.join(',') || '11/11項目');
+
+    /* 4. 初期状態：型は5枚・未選択・おすすめなし */
+    var types=qa('[data-genre]');
+    ok('この日作れる型が5枚', types.length===5, types.length+'枚');
+    ok('型の見出しが②', text('.lbl') !== '' && doc().body.textContent.indexOf('② この日作れるゲームの型')>=0, '②見出しあり');
+    ok('目的を選ぶ前はおすすめを出さない', text('.rec-line').indexOf('先に①')>=0, text('.rec-line'));
+    ok('目的を選ぶ前は型をロック表示', qa('.chip.locked').length===5, qa('.chip.locked').length+'枚');
+
+    /* 5. 目的を選ばずに型を押しても進まない */
+    click('[data-genre="gh_kit_move"]');
+    ok('目的なしでは型を選べない', eyebrow().indexOf('STEP 02')>=0 && text('#toast').indexOf('先に①')>=0,
+       eyebrow()+' / '+text('#toast'));
+
+    /* 6. 集める目的 → あつめて届ける がおすすめ */
+    click('[data-pick="purpose"][data-id="p_collect_can"]');
+    ok('目的を選ぶとおすすめが出る', text('.rec-line').indexOf('あつめて届ける')>=0 && text('.rec-line').indexOf('おすすめ')>=0,
+       text('.rec-line'));
+    ok('おすすめの型が強調される', qa('.chip.recommend').length===1 && text('.chip.recommend').indexOf('あつめて届ける')>=0,
+       text('.chip.recommend'));
+    ok('目的チップが選択状態', (q('[data-pick="purpose"][data-id="p_collect_can"]')||{}).className.indexOf('on')>=0,
+       (q('[data-pick="purpose"][data-id="p_collect_can"]')||{}).className);
+
+    /* 7. おすすめ以外の型を選んでも、目的は上書きされない */
+    click('[data-genre="gh_kit_move"]');
+    ok('型を選ぶと手段画面へ', eyebrow().indexOf('STEP 03')>=0, eyebrow());
+    var web=await toWeb();
+    ok('選んだ目的が出力に残る', web.indexOf('猫缶')>=0 && web.indexOf('一番高いところに立つ')<0,
+       '猫缶='+(web.indexOf('猫缶')>=0)+' / 高い所='+(web.indexOf('一番高いところに立つ')>=0));
+
+    /* 8. 登る目的 → うごく床 がおすすめ */
+    await reset();
+    click('[data-pick="purpose"][data-id="p_climb_tower"]');
+    ok('登る目的では うごく床 がおすすめ', text('.rec-line').indexOf('うごく床で進む')>=0,
+       text('.rec-line'));
+
+    var tbody=document.querySelector('#tbl tbody');
+    lines.forEach(function(r){
+      var tr=document.createElement('tr');
+      tr.innerHTML='<td>'+r.name+'</td><td class="'+(r.ok?'p':'f')+'">'+(r.ok?'PASS':'FAIL')+'</td><td>'+r.note+'</td>';
+      tbody.appendChild(tr);
+    });
+    document.getElementById('sum').textContent=(fail===0?'ALL PASS':'FAILあり')+' — PASS '+pass+' / FAIL '+fail+'（'+(pass+fail)+'項目）';
+    document.getElementById('json').textContent=JSON.stringify({pass:pass,fail:fail,lines:lines});
+    window.__PURPOSE_FLOW__={pass:pass,fail:fail};
+  }catch(e){
+    document.getElementById('sum').textContent='ERROR — '+e.message;
+    document.getElementById('json').textContent=JSON.stringify({pass:pass,fail:fail,error:e.message,lines:lines});
+  }
+})();
+})();
+</script>
+</body>
+</html>

@@ -57,6 +57,22 @@ function load(){
          && CT.LIMITED.types.indexOf(state.pattern)<0){
         state.pattern = ''; state.genreHint = '';
       }
+      if(limitedOn()){
+        /* 限定版では「人を操作」を使わない。古い保存データはネコ操作に戻す */
+        if(state.subject !== 'sub_cat'){
+          state.subject = 'sub_cat';
+          state.purpose = ''; state.purposeOther = '';
+          state.action = ''; state.variant = 0; state.subAction = '';
+          state.cons = []; state.packLabel = '';
+        }
+        /* 限定版で非表示にした目的グループは、保存データからも外す */
+        if(state.purpose){
+          const g = limitedGroupOf(state.purpose);
+          if(g && limitedHiddenGroup(g.id)){
+            state.purpose = ''; state.pattern = ''; state.genreHint = '';
+          }
+        }
+      }
       if(!Array.isArray(state.cons)) state.cons = [];
       state.cons = state.cons.filter(function(c){ return c && typeof c.id==='string'; });
       if(!state.roles || typeof state.roles!=='object') state.roles = f.roles;
@@ -104,6 +120,14 @@ function chips(arr, key, multi){
     const on = multi ? state.profile[key].indexOf(o.id)>=0 : state[key]===o.id;
     return '<button type="button" class="chip'+(on?' on':'')+'" data-pick="'+key+'" data-id="'+o.id+'" data-multi="'+(multi?1:0)+'">'+esc(o.label)+'</button>';
   }).join('') + '</div>';
+}
+function limitedOn(){ return !!(CT.LIMITED && CT.LIMITED.mode); }
+function limitedGroupOf(pid){
+  if(!pid) return null;
+  return CT.PURPOSE_GROUPS.find(function(g){ return g.items.some(function(i){ return i.id===pid; }); }) || null;
+}
+function limitedHiddenGroup(gid){
+  return !!(CT.LIMITED && Array.isArray(CT.LIMITED.hiddenGroups) && CT.LIMITED.hiddenGroups.indexOf(gid)>=0);
 }
 function otherInput(cat){
   return '<input type="text" data-othcat="'+cat+'" placeholder="その他・自由記入（ここに出したものがいちばん強ければ、選ばなくてよい）" value="'+esc(state.profile.other[cat]||'')+'">';
@@ -184,27 +208,48 @@ nav('intro', 'purpose')
 ].join('');
 
 R.purpose = () => {
-  const human = state.subject==='sub_human';
-  const groups = human ? CT.PURPOSE_GROUPS_HUMAN : CT.PURPOSE_GROUPS;
+  const isLimited = limitedOn();
+  const human = !isLimited && state.subject==='sub_human';
+  let groups = human ? CT.PURPOSE_GROUPS_HUMAN : CT.PURPOSE_GROUPS;
+  if(isLimited){ groups = groups.filter(g=>!limitedHiddenGroup(g.id)); }
   const hintMain = CT.GENRE_HINTS.slice(0, 5);
   const hintMore = CT.GENRE_HINTS.slice(5);
-  const genreHtml = [
+  const purposeChosen = !!(state.purpose || (state.purposeOther && state.purposeOther.trim()));
+  const chosenPurpose = state.purpose ? CT.PURPOSES.find(p=>p.id===state.purpose) : null;
+  const recGroup = limitedGroupOf(state.purpose);
+  const rec = (isLimited && recGroup && CT.LIMITED.recommend) ? CT.LIMITED.recommend[recGroup.id] : null;
+  const recHint = rec ? hintMain.find(h=>h.set.pattern===rec.type) : null;
+  const recLabel = chosenPurpose ? chosenPurpose.label : ((state.purposeOther || '').trim() || (recGroup ? recGroup.label : '選んだ目的'));
+  const recLine = !isLimited ? '' : (purposeChosen
+    ? (recHint
+        ? '<p class="rec-line">あなたたちが選んだ「'+esc(recLabel)+'」から推察すると、『'+esc(recHint.label)+'』がおすすめです。'+(rec.why ? ' '+esc(rec.why) : '')+'</p>'
+        : '<p class="rec-line">目的が自由記述なので、下の5つから近いものを選んでください。</p>')
+    : '<p class="rec-line">先に①の「ねらい」から、グループの総意を選んでください。選ぶと、おすすめの型が出ます。</p>');
+  const limitedTypes = isLimited ? [
     (CT.LIMITED && CT.LIMITED.note ? '<p class="limited-note">'+esc(CT.LIMITED.note)+'</p>' : ''),
-    '<div class="lbl">' + (CT.LIMITED ? 'この日作れるゲームの型（この中から選ぶ）' : 'こんなジャンルも考えられます（行き詰まったら・押すと EMS の入り口へ飛びます）') + '</div>',
+    '<div class="lbl">② この日作れるゲームの型（この中から選ぶ）</div>',
+    recLine,
+    '<div class="chips">' + hintMain.map(h=>{
+      const on = recHint && h.id===recHint.id;
+      return '<button type="button" class="chip small'+(on?' recommend':'')+(purposeChosen?'':' locked')+'" data-genre="'+h.id+'">'+esc(h.label)+'：'+esc(h.desc)+(on?' <b class="rec-badge">おすすめ</b>':'')+'</button>';
+    }).join('') + '</div>'
+  ].join('') : '';
+  const normalGenre = isLimited ? '' : [
+    '<div class="lbl">こんなジャンルも考えられます（行き詰まったら・押すと EMS の入り口へ飛びます）</div>',
     '<div class="chips">' + hintMain.map(h=>'<button type="button" class="chip small" data-genre="'+h.id+'">'+esc(h.label)+'：'+esc(h.desc)+'</button>').join('') + '</div>',
     (hintMore.length ? '<details class="genre-more"><summary>ほかのジャンルも見る（'+hintMore.length+'枚）</summary><div class="chips">' + hintMore.map(h=>'<button type="button" class="chip small" data-genre="'+h.id+'">'+esc(h.label)+'：'+esc(h.desc)+'</button>').join('') + '</div></details>' : '')
   ].join('');
   return [
 '<section class="card"><div class="eyebrow">STEP 02 / ねらい（目的・E）</div>',
-'<h2 class="step">作りたいゲームはどれ？</h2>',
-'<div class="lbl">誰を操作する？（グループの案の中心に寄せる・切り替えると選び直しになります）</div>',
-'<div class="chips">' + CT.SUBJECTS.map(s=>'<button type="button" class="chip'+((human?(s.id==='sub_human'):(s.id==='sub_cat'))?' on':'')+'" data-subject="'+s.id+'">'+esc(s.label)+'</button>').join('') + '</div>',
-'<p class="lead">ここで作りたいゲームを決めます。漠然としているときは、この中から選べば企画になります。カテゴリごとに並んでいます。</p>',
-(CT.LIMITED ? genreHtml : ''),
+'<h2 class="step">' + (isLimited ? 'グループの総意はどれ？' : '作りたいゲームはどれ？') + '</h2>',
+(isLimited ? '' : '<div class="lbl">誰を操作する？（グループの案の中心に寄せる・切り替えると選び直しになります）</div>'),
+(isLimited ? '' : '<div class="chips">' + CT.SUBJECTS.map(s=>'<button type="button" class="chip'+((human?(s.id==='sub_human'):(s.id==='sub_cat'))?' on':'')+'" data-subject="'+s.id+'">'+esc(s.label)+'</button>').join('') + '</div>'),
+'<p class="lead">' + (isLimited ? 'まず、グループで話し合って決めた「総意」を①から選んでください。次に、この日に作れるゲームの型を②から選びます。' : 'ここで作りたいゲームを決めます。漠然としているときは、この中から選べば企画になります。カテゴリごとに並んでいます。') + '</p>',
+(isLimited ? '<div class="lbl">① グループの総意（目的）を選ぶ</div>' : ''),
 groups.map(g=>'<div class="lbl">'+esc(g.label)+'</div>' + chips(g.items, 'purpose', false)).join(''),
 '<div class="lbl">その他（ここに書けば、それが目的になります）</div>',
 '<input type="text" data-purposeother placeholder="自由に書く（例: ネコがケーキを守る）" value="'+esc(state.purposeOther||'')+'">',
-(CT.LIMITED ? '' : genreHtml),
+(isLimited ? limitedTypes : normalGenre),
 ''+
 '<div class="lbl">' + esc(CT.PERSONA_LABEL) + '</div>',
 '<div class="cons-row"><input type="text" data-persona-a placeholder="◯◯したい" value="'+esc((state.persona||'').split('のに')[0]||'')+'"><span class="unit">のに</span></div>',
@@ -407,7 +452,11 @@ function toggle(key, vid, multi){
     arr.push(vid);
   } else {
     state[key] = (state[key]===vid) ? '' : vid;
-    if(key==='purpose'){ state.emsConfirmed = false; }
+    if(key==='purpose'){
+      state.emsConfirmed = false;
+      /* 限定版は「目的 → 型」の順。目的を変えたら型を選び直す */
+      if(limitedOn()){ state.pattern = ''; state.genreHint = ''; }
+    }
   }
 }
 
@@ -418,8 +467,15 @@ document.addEventListener('click', e=>{
   if(t.dataset.genre){
     const h = CT.GENRE_HINTS.find(x=>x.id===t.dataset.genre);
     if(h){
+      if(limitedOn()){
+        const hasPurpose = !!(state.purpose || (state.purposeOther && state.purposeOther.trim()));
+        if(!hasPurpose){
+          toast('先に①の「ねらい」から、グループの総意を選んでください');
+          return;
+        }
+      }
       state.genreHint = h.id;
-      state.purpose = h.set.purpose; state.purposeOther = '';
+      if(!limitedOn()){ state.purpose = h.set.purpose; state.purposeOther = ''; }
       state.pattern = h.set.pattern;
       state.action=''; state.variant=0; state.subAction=''; state.cons=[]; state.packLabel='';
       state.emsConfirmed = false;
@@ -463,11 +519,25 @@ document.addEventListener('input', e=>{
   if(t.dataset.othcat !== undefined){ state.profile.other[t.dataset.othcat] = t.value; save(); return; }
   if(t.dataset.personaA !== undefined){ state.persona = t.value + 'のに' + ((state.persona||'').split('のに')[1]||''); save(); return; }
   if(t.dataset.personaB !== undefined){ state.persona = (state.persona||'').split('のに')[0] + 'のに' + t.value + 'でできない'; save(); return; }
-  if(t.dataset.purposeother !== undefined){ state.purposeOther = t.value; save(); return; }
+  if(t.dataset.purposeother !== undefined){
+    const v = t.value;
+    state.purposeOther = v;
+    if(v.trim()){
+      state.purpose = ''; state.emsConfirmed = false;
+      if(limitedOn()){ state.pattern = ''; state.genreHint = ''; }
+    }
+    save(); return;
+  }
   if(t.dataset.consnum !== undefined){ state.cons[+t.dataset.consnum].num = t.value; save(); return; }
   if(t.dataset.agreereason !== undefined){ const a = state.agree[t.dataset.agreereason] || {agree:false, reason:''}; a.reason = t.value; state.agree[t.dataset.agreereason] = a; save(); return; }
   if(t.dataset.title !== undefined){ state.title = t.value; save(); return; }
   if(t.dataset.retrotext !== undefined){ state.retro[t.dataset.retrotext] = t.value; save(); return; }
+});
+
+document.addEventListener('change', e=>{
+  const t = e.target;
+  /* 「その他」の目的を書き終えたら、②の型とおすすめを更新する */
+  if(t.dataset.purposeother !== undefined){ render(); return; }
 });
 
 function bindHeader(){
