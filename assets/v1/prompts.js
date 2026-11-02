@@ -195,6 +195,16 @@ const JUICE_MORE = [
 '・ゴール: 画面全体のフラッシュ（白0.1秒）+ 粒60 + ニャー（音）+ スコア表示のバウンド。',
 '・待機中も完全には止めない（尻尾の揺れとまばたき。ネコの命を見せる）。'
 ].join('\n');
+/* 2往復目: 被弾の見せ方（赤フラッシュ＋無敵点滅） */
+const DAMAGE_SPEC = [
+'【被弾の見せ方（必須・2往復目で強化）】',
+'・参照コード1に、被弾用の変数（player.invT / hurtFlash）と点滅の描画が入っている。あなたは updateGame で値をセットするだけ。',
+'・被弾したら、次の5つを同時に起こす: player.invT = 1.2（無敵秒）、hurtFlash = 0.18（赤フラッシュ秒）、hitstop = 0.05、shake(6, 0.18)、spawnParticles(player.x, player.y, 12, "#FF6B6B")。',
+'・無敵中は参照コード1がネコを点滅させる（0.05秒ごとに alpha 0.25 と 1.0 を交互）。1.2秒で6往復。自分で点滅コードを書き直さない。',
+'・点滅はネコだけ。HUD・背景・水には掛けない。終わったら alpha は1に戻る（参照コード1が戻す）。',
+'・乱数は使わない。点滅は player.invT の残り時間から決まる。',
+'・確認: 1回被弾して、赤フラッシュ・揺れ・停止・粒・ミス音・点滅6往復を1つずつ数える。足りないものがあれば、その場で足してから次へ進む。'
+].join('\n');
 /* 効果音（FB: SEは鳴らしてほしい・ニャーも入れる） */
 const SFX_SPEC = [
 '【効果音（必須・全部Web Audioで合成。音源ファイルは読まない）】',
@@ -294,6 +304,8 @@ pk(CT.ENGINE.NES_BGM_WEB),
 '',
 JUICE_MORE,
 '',
+DAMAGE_SPEC,
+'',
 SFX_SPEC,
 '',
 '【背景（決定的に描く・この舞台で作る）】',
@@ -327,6 +339,13 @@ J ? (J.color + '（' + J.verdict + '）: ' + J.reason) : '未判定',
 
 /* ---------------- 5. Unity依頼プロトコル（後日の移植実験用） ---------------- */
 function promptUnity(P){
+  const pat = (P.patternId && CT.PATTERNS && CT.PATTERNS[P.patternId]) ? CT.PATTERNS[P.patternId] : null;
+  const kitLine = (pat && pat.unity)
+    ? '・シーン: ' + pat.unity.scene + ' ／ 使う仕かけ（Unityキット）: ' + pat.unity.kit.join(' / ')
+    : 'Moving Platform / Switch / Push Box / Hazard Area / Patrol Enemy / Collectible / Goal / Timer / Hide Object';
+  const sceneLine = (pat && pat.unity)
+    ? '・シーンは ' + pat.unity.scene + ' を使う。'
+    : '・シーンは SC_Base_Side か SC_Base_Top のどちらか1つ。';
   return [
 '【UnityMCP 依頼プロトコル — ネコのゲームツクール（CatGameKit）】',
 '基準: 和洋九段×TID 1Dayミニゲームジャム 準備依頼書（2026-09-11）。',
@@ -334,6 +353,7 @@ function promptUnity(P){
 '',
 '■ この案を Unity に移す',
 'タイトル: ' + P.title,
+(pat ? '・型: ' + pat.label : ''),
 '【目的（E）】' + goalOf(P),
 '【手段（M）】中心: ' + (P.centerVerb || '未記入') + (P.subVerb ? '／サブ: ' + P.subVerb : ''),
 '【制約（S）→ GameSettings への反映】',
@@ -343,9 +363,9 @@ function promptUnity(P){
 '【出てくる障害（具体）】' + P.obstacles.join('、') + '（見た目だけ差し替え。機能は Patrol/Chase を使い回す）',
 '',
 '■ 使うギミック（優先度A）',
-'Moving Platform / Switch / Push Box / Hazard Area / Patrol Enemy / Collectible / Goal / Timer / Hide Object',
+kitLine,
 '・仕掛けは Trigger → Action の共通ルールで組む（コードを書かない）。',
-'・シーンは SC_Base_Side か SC_Base_Top のどちらか1つ。',
+sceneLine,
 '',
 '■ 変えるのはここだけ',
 'タイトル・ロゴ・BGM選択・配色・GameSettings の数値。それ以外は触らない。'

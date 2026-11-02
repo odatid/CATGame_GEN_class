@@ -457,7 +457,16 @@ function bgmOf(purposeId){
 CT.stageOf = stageOf;
 CT.bgmOf = bgmOf;
 
-CT.LIMITED = { mode:'class', note:'この日に使える仕かけは、Unityテンプレートにある物だけ（下のカードの中から選ぶ）' };
+/* ---------------- クラス版（分離リポジトリ） ----------------
+   この日に作れるゲームを、Unityテンプレートの5つの仕かけに絞る。
+   本体の CATGame_GEN とは別リポジトリ。ここだけを公開する。
+   types に無い型は、保存データから読み込んでも使わない。
+   ------------------------------------------------------------ */
+CT.LIMITED = {
+  mode:'class',
+  types:['pt_moveplat','pt_collect','pt_hide','pt_switch','pt_escape'],
+  note:'この日に作れるのは、Unityテンプレートにある5つの仕かけだけです。下のカードから選んでください。'
+};
 CT.GENRE_HINTS = [
   {id:'gh_kit_move',  label:'うごく床で進む',   desc:'動く床を渡ってゴールへ（Unity: Moving Platform 系・横画面）', set:{purpose:'p_climb_tower', pattern:'pt_moveplat'}},
   {id:'gh_kit_coll',  label:'あつめて届ける',   desc:'猫缶や魚をぜんぶ集める（Unity: Collectible 系・俯瞰画面）', set:{purpose:'p_collect_can', pattern:'pt_collect'}},
@@ -501,4 +510,4 @@ CT.inferEMS = function(st){
   ].join('／');
   return {ok: missing.length === 0, missing: missing, sentence: sentence};
 };
-CT.VERSION = {tag:'クラス版 v1.0.0-class', date:'2026-11-02'};
+CT.VERSION = {tag:'クラス版 v1.1.0', date:'2026-11-02'};
